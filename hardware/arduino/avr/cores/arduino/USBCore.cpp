@@ -266,7 +266,8 @@ int USB_Send(u8 ep, const void* d, int len)
 	int r = len;
 	const u8* data = (const u8*)d;
 	u8 timeout = 250;		// 250ms timeout on send? TODO
-	while (len)
+	bool sendZlp = false;
+	while (len || sendZlp)
 	{
 		u8 n = USB_SendSpace(ep);
 		if (n == 0)
@@ -306,8 +307,12 @@ int USB_Send(u8 ep, const void* d, int len)
 				}
 			}
 
-			if (!ReadWriteAllowed() || ((len == 0) && (ep & TRANSFER_RELEASE)))	// Release full buffer
+			bool bufferFull = !ReadWriteAllowed();
+
+			if (bufferFull || ((len == 0) && (ep & TRANSFER_RELEASE)) || sendZlp)	// Release full buffer
 				ReleaseTX();
+
+			sendZlp = bufferFull && (len == 0);
 		}
 	}
 	TXLED1;					// light the TX LED
