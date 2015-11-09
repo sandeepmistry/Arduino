@@ -285,22 +285,27 @@ int USB_Send(u8 ep, const void* d, int len)
 			// Frame may have been released by the SOF interrupt handler
 			if (!ReadWriteAllowed())
 				continue;
-			len -= n;
-			if (ep & TRANSFER_ZERO)
+
+			if (n > 0)
 			{
-				while (n--)
-					Send8(0);
+				len -= n;
+				if (ep & TRANSFER_ZERO)
+				{
+					while (n--)
+						Send8(0);
+				}
+				else if (ep & TRANSFER_PGM)
+				{
+					while (n--)
+						Send8(pgm_read_byte(data++));
+				}
+				else
+				{
+					while (n--)
+						Send8(*data++);
+				}
 			}
-			else if (ep & TRANSFER_PGM)
-			{
-				while (n--)
-					Send8(pgm_read_byte(data++));
-			}
-			else
-			{
-				while (n--)
-					Send8(*data++);
-			}
+
 			if (!ReadWriteAllowed() || ((len == 0) && (ep & TRANSFER_RELEASE)))	// Release full buffer
 				ReleaseTX();
 		}
