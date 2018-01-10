@@ -22,6 +22,7 @@ uint8_t SPIClass::interruptSave = 0;
 #ifdef SPI_TRANSACTION_MISMATCH_LED
 uint8_t SPIClass::inTransactionFlag = 0;
 #endif
+byte (*SPIClass::onReceiveCallback)(byte) = NULL;
 
 void SPIClass::begin()
 {
@@ -63,6 +64,15 @@ void SPIClass::begin()
   SREG = sreg;
 }
 
+int SPIClass::beginSlave()
+{
+  pinMode(MISO, OUTPUT);
+  SPCR |= bit(SPE);
+  attachInterrupt();
+
+  return 1;
+}
+
 void SPIClass::end() {
   uint8_t sreg = SREG;
   noInterrupts(); // Protect from a scheduler and prevent transactionBegin
@@ -78,6 +88,23 @@ void SPIClass::end() {
     #endif
   }
   SREG = sreg;
+}
+
+void SPIClass::onReceive(byte(*callback)(byte))
+{
+  onReceiveCallback = callback;
+}
+
+void SPIClass::handleInterrupt()
+{
+  byte in = SPDR;
+  byte out = 0xff;
+
+  if (onReceiveCallback) {
+    out = onReceiveCallback(in);
+  }
+
+  SPDR = out;
 }
 
 // mapping of interrupt numbers to bits within SPI_AVR_EIMSK
@@ -199,3 +226,8 @@ void SPIClass::notUsingInterrupt(uint8_t interruptNumber)
     interruptMode = 0;
   SREG = sreg;
 }
+
+ISR (SPI_STC_vect)
+{
+  SPI.handleInterrupt();
+} 

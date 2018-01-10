@@ -36,6 +36,11 @@
 // on if any mismatch is ever detected.
 //#define SPI_TRANSACTION_MISMATCH_LED 5
 
+// SPI_HAS_SLAVE means that SPI has
+//   - beginSlave()
+//   - onReceive(callback)
+#define SPI_HAS_SLAVE
+
 #ifndef LSBFIRST
 #define LSBFIRST 0
 #endif
@@ -157,6 +162,8 @@ class SPIClass {
 public:
   // Initialize the SPI library
   static void begin();
+
+  static int beginSlave();
 
   // If SPI is used from within an interrupt, this function registers
   // that interrupt with the SPI library, so beginTransaction() can
@@ -309,6 +316,9 @@ public:
   inline static void attachInterrupt() { SPCR |= _BV(SPIE); }
   inline static void detachInterrupt() { SPCR &= ~_BV(SPIE); }
 
+  static void onReceive(byte(*)(byte));
+  static void handleInterrupt();
+
 private:
   static uint8_t initialized;
   static uint8_t interruptMode; // 0=none, 1=mask, 2=global
@@ -317,6 +327,7 @@ private:
   #ifdef SPI_TRANSACTION_MISMATCH_LED
   static uint8_t inTransactionFlag;
   #endif
+  static byte (*onReceiveCallback)(byte); // Callback user functions
 };
 
 extern SPIClass SPI;
